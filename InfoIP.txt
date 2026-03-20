@@ -1,0 +1,11 @@
+IP NAT
+kube1: 192.168.175.133
+kube2: 192.168.175.134
+ingress:
+monitoring:
+
+IP Host-only
+kube1: 192.168.152.128
+kube2: 192.168.152.129
+ingress:
+monitoring:

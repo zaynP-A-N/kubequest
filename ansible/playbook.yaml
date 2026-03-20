@@ -1,0 +1,13 @@
+---
+
+- name: Initialize the VMs
+  hosts: all
+  become: yes
+  roles:
+    - common
+
+- name: Install all the tools for Kubernetes
+  hosts: all 
+  become: yes
+  roles:
+    - k8s_prepare
