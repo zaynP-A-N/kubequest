@@ -44,6 +44,10 @@
         └──────────────────────────────────────────────────┘
 
 
+# Params of VMs
+kube1, kube2 and monitoring: 4CPU, 4GRAM, 40G storage
+ingress: 2CPU, 2GRAM, 20G storage
+
 # Node's role
 kube-1:
   role: control-plane

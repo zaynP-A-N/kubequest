@@ -1,11 +1,15 @@
 IP NAT
 kube1: 192.168.175.133
 kube2: 192.168.175.134
-ingress:
-monitoring:
+monitoring: 192.168.175.135
+ingress: 192.168.175.137
+
 
 IP Host-only
 kube1: 192.168.152.128
 kube2: 192.168.152.129
-ingress:
-monitoring:
+monitoring: 192.168.152.130
+ingress: 192.168.152.132
+
+
+
