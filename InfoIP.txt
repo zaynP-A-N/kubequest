@@ -12,4 +12,9 @@ monitoring: 192.168.152.130
 ingress: 192.168.152.132
 
 
+pour avoir password grafana:
+kubectl get secret -n monitoring monitoring-grafana -o jsonpath="{.data.admin-password}" | base64 --decode
+
+new password:
+grafana
 

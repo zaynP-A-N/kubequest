@@ -1,0 +1,25 @@
+loki:
+  nodeSelector:
+    node-role: monitoring
+
+promtail:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: node-role.kubernetes.io/ingress
+                operator: DoesNotExist
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+      ephemeral-storage: 256Mi
+    requests:
+      cpu: 50m
+      memory: 50Mi
+      ephemeral-storage: 64Mi
+  enabled: true
+
+grafana:
+  enabled: false

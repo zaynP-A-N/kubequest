@@ -1,0 +1,24 @@
+grafana:
+  nodeSelector:
+    node-role: monitoring
+
+prometheus:
+  prometheusSpec:
+    nodeSelector:
+      node-role: monitoring
+
+alertmanager:
+  alertmanagerSpec:
+    nodeSelector:
+      node-role: monitoring
+
+kube-state-metrics:
+  nodeSelector:
+    node-role: monitoring
+
+prometheusOperator:
+  nodeSelector:
+    node-role: monitoring
+
+nodeExporter:
+  enabled: true
