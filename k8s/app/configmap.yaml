@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: laravel-config
+  namespace: app
+data:
+  APP_NAME : "Laravel"
+  APP_ENV : "dev"
+  APP_DEBUG : "false"
+  APP_URL : "http://app.local"
+  DB_CONNECTION : "mysql"
+  DB_HOST : "mysql"
+  DB_PORT : "3306"
+  DB_DATABASE : "laravel"
+  DB_USERNAME : "test"
