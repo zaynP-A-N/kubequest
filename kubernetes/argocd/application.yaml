@@ -1,0 +1,46 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubequest-app
+  namespace: argocd                # ArgoCD surveille cette ressource dans son namespace
+  # finalizer : ArgoCD supprimera les ressources K8s quand on supprime cette Application
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  # ── Source : où se trouve le code à déployer ──────────────────────────────
+  source:
+    repoURL: https://gitlab.com/fotsodjeff/t-clo-902_msc2026.git
+    targetRevision: feat/initializeKubertenese-djeff-v1   # branche Git à suivre
+    path: kubernetes/helm/kubequest-app                   # dossier du Helm chart
+
+    # Options Helm : équivalent de "helm install" avec ces valeurs
+    helm:
+      releaseName: kubequest-app
+      # On peut surcharger des values ici sans modifier values.yaml
+      values: |
+        app:
+          replicas: 2
+
+  # ── Destination : où déployer dans le cluster ─────────────────────────────
+  destination:
+    server: https://kubernetes.default.svc   # le cluster local (ArgoCD tourne dedans)
+    namespace: app
+
+  # ── Ignorer les diffs gérés par le HPA ────────────────────────────────────
+  # spec.replicas est géré dynamiquement par le HPA ; sans ignoreDifferences,
+  # selfHeal réinitialiserait les replicas à 2 dès que le HPA scale.
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+
+  # ── Politique de synchronisation ──────────────────────────────────────────
+  syncPolicy:
+    automated:
+      prune: true      # supprime les ressources K8s qui n'existent plus dans Git
+      selfHeal: true   # si quelqu'un modifie manuellement une ressource, ArgoCD la revert
+    syncOptions:
+      - CreateNamespace=true    # crée le namespace app s'il n'existe pas

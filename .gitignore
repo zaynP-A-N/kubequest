@@ -1,0 +1,14 @@
+# macOS metadata
+._*
+.DS_Store
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+.terraform.lock.hcl
+
+# Sensitive
+CREDENTIALS.local
+*.local

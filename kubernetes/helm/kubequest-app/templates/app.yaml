@@ -1,0 +1,123 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: laravel
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+spec:
+  replicas: {{ .Values.app.replicas }}
+  selector:
+    matchLabels:
+      app: laravel
+  template:
+    metadata:
+      labels:
+        app: laravel
+    spec:
+      serviceAccountName: app-sa     # ServiceAccount avec automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true           # interdit de tourner en tant que root
+        runAsUser: 33                # UID www-data (Apache)
+        runAsGroup: 33
+        fsGroup: 33
+      containers:
+        - name: app
+          image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag }}"
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false   # interdit sudo / setuid
+            capabilities:
+              drop:
+                - ALL                         # enlève toutes les capabilities Linux
+              add:
+                - NET_BIND_SERVICE            # nécessaire pour Apache (port 80 < 1024)
+          ports:
+            - containerPort: 80
+          env:
+            - name: APP_ENV
+              value: {{ .Values.app.env.appEnv | quote }}
+            - name: APP_DEBUG
+              value: {{ .Values.app.env.appDebug | quote }}
+            - name: APP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: app-key
+            - name: DB_CONNECTION
+              value: "mysql"
+            - name: DB_HOST
+              value: "mysql"
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: mysql-database
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: mysql-user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: mysql-password
+          readinessProbe:
+            httpGet:
+              path: /api/counter/count
+              port: 80
+            initialDelaySeconds: {{ .Values.app.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.app.readinessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.app.readinessProbe.failureThreshold }}
+          resources:
+            {{- toYaml .Values.app.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: laravel
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: {{ .Chart.Name }}
+spec:
+  selector:
+    app: laravel
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP
+---
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: {{ .Chart.Name }}
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: app
+                port:
+                  number: 80
+{{- end }}

@@ -1,0 +1,57 @@
+---
+# ServiceAccount dédié pour les pods Laravel
+# Par défaut K8s utilise le ServiceAccount "default" qui a souvent trop de droits
+# On crée un SA minimal : les pods app n'ont besoin d'aucun accès à l'API K8s
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-sa
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: {{ .Chart.Name }}
+automountServiceAccountToken: false   # désactive le montage auto du token K8s dans le pod
+                                       # Laravel n'a pas besoin de parler à l'API K8s
+---
+# ResourceQuota — Limite ce que le namespace peut consommer en totalité
+# Empêche l'app de monopoliser toutes les ressources du cluster
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: app-quota
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: {{ .Chart.Name }}
+spec:
+  hard:
+    requests.cpu: "1"          # total CPU demandé par tous les pods : max 1 vCPU
+    requests.memory: "2Gi"     # total RAM demandée : max 2 Gi (6 replicas × 128Mi + mysql)
+    limits.cpu: "4"            # total CPU limité : max 4 vCPU (6 replicas × 500m + mysql)
+    limits.memory: "8Gi"       # total RAM limitée : max 8 Gi (6 replicas × 1Gi + mysql)
+    pods: "10"                 # max 10 pods simultanés dans ce namespace
+    services: "5"              # max 5 Services
+    persistentvolumeclaims: "3" # max 3 PVC
+---
+# LimitRange — Valeurs par défaut si un pod ne déclare pas ses resources
+# Évite les pods "sans limites" qui peuvent saturer un nœud
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: app-limits
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: {{ .Chart.Name }}
+spec:
+  limits:
+    - type: Container
+      default:               # limites appliquées si le pod n'en déclare pas
+        memory: "256Mi"
+        cpu: "200m"
+      defaultRequest:        # requests appliquées si le pod n'en déclare pas
+        memory: "64Mi"
+        cpu: "50m"
+      max:                   # un container ne peut pas dépasser ces valeurs
+        memory: "1Gi"
+        cpu: "500m"

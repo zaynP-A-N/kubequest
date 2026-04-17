@@ -1,0 +1,92 @@
+# values.yaml — Valeurs par défaut du chart kubequest-app
+# Toutes ces valeurs peuvent être surchargées au déploiement :
+#   helm install myapp . -f values-prod.yaml
+#   helm install myapp . --set app.replicas=3
+
+# ─────────────────────────────────────────
+# Namespace
+# ─────────────────────────────────────────
+namespace: app
+
+# ─────────────────────────────────────────
+# Application Laravel
+# ─────────────────────────────────────────
+app:
+  image:
+    repository: mistererson/kubequest-app
+    tag: latest
+    pullPolicy: Always
+
+  replicas: 2
+
+  env:
+    appEnv: production
+    appDebug: "false"
+    # APP_KEY : stocker dans values-secrets.yaml (gitignored) ou Sealed Secret
+    # Générer avec : php artisan key:generate --show
+    appKey: "SEALED"  # remplacé par SealedSecret en production
+
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 50
+
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+  readinessProbe:
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    failureThreshold: 5
+
+# ─────────────────────────────────────────
+# Base de données MySQL
+# ─────────────────────────────────────────
+mysql:
+  image:
+    repository: mysql
+    tag: "8.0"
+
+  replicas: 1   # toujours 1 pour une DB sans clustering
+
+  storage:
+    size: 2Gi
+    storageClassName: local-path
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  # Credentials — injectés dans un Secret K8s
+  # En prod : utiliser External Secrets Operator, ne jamais mettre les vrais mots de passe ici
+  # CREDENTIALS : ne pas mettre les vrais mots de passe ici
+  # Utiliser values-secrets.yaml (gitignored) : cp values-secrets.yaml.example values-secrets.yaml
+  # En GitOps : Sealed Secrets (voir kubernetes/sealed-secrets/)
+  credentials:
+    database: app_database
+    user: app_user
+    password: CHANGE_ME
+    rootPassword: CHANGE_ME
+
+# ─────────────────────────────────────────
+# Ingress
+# ─────────────────────────────────────────
+ingress:
+  enabled: true
+  className: nginx
+  host: app.kubequest.local
+  # tls: []   # décommentez en prod avec cert-manager
