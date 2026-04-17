@@ -2,6 +2,9 @@
 ._*
 .DS_Store
 
+# Documentation personnelle
+documentation/
+
 # Terraform
 **/.terraform/
 *.tfstate
