@@ -1,0 +1,17 @@
+controller:
+  nodeSelector:
+    node-role: ingress
+  service:
+    type: NodePort
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+      ephemeral-storage: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+      ephemeral-storage: 512Mi
+  config:
+    error-log-level: warn
+  terminationGracePeriodSeconds: 30

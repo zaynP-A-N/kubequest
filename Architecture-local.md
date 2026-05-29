@@ -141,3 +141,40 @@ kubectl / Helm (deploy resources)
       │
       ▼
 Kustomize / ArgoCD (automation)
+
+
+
+Saved to project memory, so next time you open Claude here it'll already know where you are. Now here's your
+  pickup material for next session.
+
+  📋 Copy-paste prompt for next time
+
+  ▎ I'm on the KubeQuest project (T-CLO-902-PAR_9). Phases 1–6 are done and the DB config is fixed. Today I 
+  ▎ want to do Phase 7 — Helm: package everything in k8s/app/ into a Helm chart. Then later Phase 8 — GitOps 
+  ▎ with ArgoCD + Sealed Secrets. Check the memory for context, then start Phase 7.
+
+  ---
+  Phase 7 — Helm checklist
+
+  - [ ] Create chart skeleton: helm/kubequest/ with Chart.yaml, values.yaml, templates/
+  - [ ] Templatize the existing manifests (Laravel Deployment+Service, MySQL PV/PVC/Secret/Deployment+Service,
+  ConfigMap, Ingress, migration Job)
+  - [ ] Move to values.yaml: image repo + tag, replica count, ingress host (app.local), DB name/user/password,
+  storage size
+  - [ ] Keep the DB password injectable (--set / values), not hardcoded → ready for Sealed Secrets
+  - [ ] Migration Job as a Helm hook (post-install,post-upgrade) so it runs automatically
+  - [ ] Test: helm lint, then helm upgrade --install kubequest helm/kubequest -n app --create-namespace
+  - [ ] Verify pods/ingress, then helm template to confirm output matches old manifests
+
+  Phase 8 — GitOps (ArgoCD) checklist
+
+  - [ ] Install Argo CD (kubectl create ns argocd + official manifests or Helm)
+  - [ ] Access the Argo CD UI (port-forward or an ingress) and get the initial admin password
+  - [ ] Create an Application CR pointing at this git repo → path helm/kubequest
+  - [ ] Set sync policy to automated (prune + self-heal) and confirm it syncs
+  - [ ] Install Sealed Secrets controller, kubeseal your DB secret, commit the encrypted SealedSecret, remove
+  the plaintext secret from the chart
+  - [ ] Verify: change a value in git → Argo auto-syncs the cluster
+  - [ ] (optional) Kustomize dev/prod overlays as in your architecture diagram
+
+  ---

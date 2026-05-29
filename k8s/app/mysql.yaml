@@ -39,7 +39,8 @@ metadata:
 type: Opaque
 stringData:
   MYSQL_ROOT_PASSWORD: "test"
-  MYSQL_DATABASE: "app-db"
+  MYSQL_DATABASE: "laravel"
+  MYSQL_USER: "test"
   MYSQL_PASSWORD: "test"
 
 ---
