@@ -19,23 +19,15 @@ app:
     appEnv: "dev"
     appDebug: "false"
     appUrl: "http://local.app"
-  # secret value -> rendered into the Laravel Secret
-  appKey: "base64:zOuCs2CDIScc1uuQxKgwh7+fDFxP1C0b4ueyF/ucOdY="
 
 # ---- Database connection (shared by Laravel + MySQL) ----
-# Single source of truth: name/user/password are reused in both
-# the Laravel secret/configmap AND the MySQL secret.
+# Passwords removed — managed by SealedSecrets in templates/
 db:
   connection: "mysql"
   host: "mysql"
   port: "3306"
   name: "laravel"
   user: "test"
-  # INJECTABLE: keep this out of templates so Phase 8 can replace
-  # it with a Sealed Secret. Override at install time with:
-  #   --set db.password=... --set db.rootPassword=...
-  password: "test"
-  rootPassword: "test"
 
 # ---- MySQL server ----
 mysql:
