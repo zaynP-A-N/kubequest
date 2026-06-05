@@ -9,7 +9,7 @@ app:
     repository: ciapro/kubequest-app
     tag: v1
     pullPolicy: IfNotPresent
-  replicas: 1
+  replicas: 2
   # schedule the app only on nodes labelled node-role=worker
   nodeSelector:
     node-role: worker

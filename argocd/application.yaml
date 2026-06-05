@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubequest
+  namespace: argocd
+spec:
+  project: default
+
+  # --- Where is the source? ---
+  source:
+    repoURL: https://github.com/EpitechMscProPromo2026/T-CLO-902-PAR_9.git
+    targetRevision: local-lab
+    path: helm/kubequest
+
+    # Tell ArgoCD this is a Helm chart and pass our overrides
+    helm:
+      values: |
+        mysql:
+          storage:
+            pvName: mysql-pv-helm
+            hostPath: /mnt/data/mysql-helm
+        ingress:
+          enabled: false
+
+  # --- Where to deploy? ---
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: apphelm
+
+  # --- Sync policy: fully automated ---
+  syncPolicy:
+    automated:
+      prune: true      # delete resources removed from git
+      selfHeal: true   # re-apply if someone manually changes the cluster
+    syncOptions:
+      - CreateNamespace=true
