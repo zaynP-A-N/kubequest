@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laravel-app
+  labels: {{- include "kubequest.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.app.replicas }}
+  selector:
+    matchLabels:
+      app: laravel-app
+  template:
+    metadata:
+      labels:
+        app: laravel-app
+    spec:
+      nodeSelector:
+        {{- toYaml .Values.app.nodeSelector | nindent 8 }}
+      containers:
+      - name: laravel-app
+        image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag }}"
+        imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+        envFrom:
+        - configMapRef:
+            name: laravel-config
+        - secretRef:
+            name: laravel-secret
+        ports:
+        - containerPort: 80
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: laravel-app
+  labels: {{- include "kubequest.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: laravel-app
+  ports:
+  - port: 80
+    targetPort: 80
+  type: ClusterIP

@@ -1,0 +1,38 @@
+{{- if .Values.migration.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: app-migration
+  labels: {{- include "kubequest.labels" . | nindent 4 }}
+  annotations:
+    # Run automatically after install AND upgrade.
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    # Recreate cleanly each run; delete after it succeeds.
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        {{- toYaml .Values.app.nodeSelector | nindent 8 }}
+      # Block until MySQL is actually accepting connections.
+      initContainers:
+        - name: wait-for-mysql
+          image: "{{ .Values.mysql.image.repository }}:{{ .Values.mysql.image.tag }}"
+          command:
+            - sh
+            - -c
+            - 'until mysqladmin ping -h {{ .Values.db.host }} --silent; do echo "waiting for mysql..."; sleep 3; done'
+      containers:
+        - name: migrate
+          image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag }}"
+          command: ["php", "artisan", "migrate", "--force"]
+          envFrom:
+            - configMapRef:
+                name: laravel-config
+            - secretRef:
+                name: laravel-secret
+{{- end }}

@@ -149,9 +149,7 @@ Saved to project memory, so next time you open Claude here it'll already know wh
 
   📋 Copy-paste prompt for next time
 
-  ▎ I'm on the KubeQuest project (T-CLO-902-PAR_9). Phases 1–6 are done and the DB config is fixed. Today I 
-  ▎ want to do Phase 7 — Helm: package everything in k8s/app/ into a Helm chart. Then later Phase 8 — GitOps 
-  ▎ with ArgoCD + Sealed Secrets. Check the memory for context, then start Phase 7.
+  ▎ I'm on the KubeQuest project (T-CLO-902-PAR_9). Phases 1–6 are done and the DB config is fixed. Today I want to do Phase 7 — Helm: package everything in k8s/app/ into a Helm chart. Then later Phase 8 — GitOps with ArgoCD + Sealed Secrets. Check the memory for context, then start Phase 7.
 
   ---
   Phase 7 — Helm checklist

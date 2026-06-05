@@ -1,0 +1,8 @@
+apiVersion: v2
+name: kubequest
+description: KubeQuest - Laravel application + MySQL deployed on Kubernetes
+type: application
+# version  = version of the CHART (bump when you change templates)
+version: 0.1.0
+# appVersion = version of the APP being deployed (your image tag)
+appVersion: "v1"

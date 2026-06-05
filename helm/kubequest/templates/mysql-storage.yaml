@@ -1,0 +1,32 @@
+# PersistentVolume is CLUSTER-scoped (no namespace).
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Values.mysql.storage.pvName }}
+  labels: {{- include "kubequest.labels" . | nindent 4 }}
+spec:
+  capacity:
+    storage: {{ .Values.mysql.storage.size }}
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: {{ .Values.mysql.storage.storageClassName }}
+  hostPath:
+    path: {{ .Values.mysql.storage.hostPath }}
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  labels: {{- include "kubequest.labels" . | nindent 4 }}
+spec:
+  storageClassName: {{ .Values.mysql.storage.storageClassName }}
+  volumeName: {{ .Values.mysql.storage.pvName }}
+  resources:
+    requests:
+      storage: {{ .Values.mysql.storage.size }}
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce

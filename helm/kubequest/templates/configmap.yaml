@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: laravel-config
+  labels: {{- include "kubequest.labels" . | nindent 4 }}
+data:
+  APP_NAME: {{ .Values.app.config.appName | quote }}
+  APP_ENV: {{ .Values.app.config.appEnv | quote }}
+  APP_DEBUG: {{ .Values.app.config.appDebug | quote }}
+  APP_URL: {{ .Values.app.config.appUrl | quote }}
+  DB_CONNECTION: {{ .Values.db.connection | quote }}
+  DB_HOST: {{ .Values.db.host | quote }}
+  DB_PORT: {{ .Values.db.port | quote }}
+  DB_DATABASE: {{ .Values.db.name | quote }}
+  DB_USERNAME: {{ .Values.db.user | quote }}

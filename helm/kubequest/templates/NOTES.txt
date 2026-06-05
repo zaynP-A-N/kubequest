@@ -1,0 +1,13 @@
+KubeQuest has been deployed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+1. Check the pods are running:
+   kubectl get pods -n {{ .Release.Namespace }}
+
+2. The migration Job runs automatically as a post-install/upgrade hook.
+   Watch it with:
+   kubectl get jobs -n {{ .Release.Namespace }}
+
+{{- if .Values.ingress.enabled }}
+3. Access the app at: http://{{ .Values.ingress.host }}
+   (make sure {{ .Values.ingress.host }} resolves to your ingress node IP, e.g. in /etc/hosts)
+{{- end }}

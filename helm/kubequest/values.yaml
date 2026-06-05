@@ -1,0 +1,61 @@
+# ============================================================
+#  Default values for the kubequest chart.
+#  Override any of these with --set key=value or -f myvalues.yaml
+# ============================================================
+
+# ---- Laravel application ----
+app:
+  image:
+    repository: ciapro/kubequest-app
+    tag: v1
+    pullPolicy: IfNotPresent
+  replicas: 1
+  # schedule the app only on nodes labelled node-role=worker
+  nodeSelector:
+    node-role: worker
+  # non-secret config -> rendered into the ConfigMap
+  config:
+    appName: "Laravel"
+    appEnv: "dev"
+    appDebug: "false"
+    appUrl: "http://local.app"
+  # secret value -> rendered into the Laravel Secret
+  appKey: "base64:zOuCs2CDIScc1uuQxKgwh7+fDFxP1C0b4ueyF/ucOdY="
+
+# ---- Database connection (shared by Laravel + MySQL) ----
+# Single source of truth: name/user/password are reused in both
+# the Laravel secret/configmap AND the MySQL secret.
+db:
+  connection: "mysql"
+  host: "mysql"
+  port: "3306"
+  name: "laravel"
+  user: "test"
+  # INJECTABLE: keep this out of templates so Phase 8 can replace
+  # it with a Sealed Secret. Override at install time with:
+  #   --set db.password=... --set db.rootPassword=...
+  password: "test"
+  rootPassword: "test"
+
+# ---- MySQL server ----
+mysql:
+  image:
+    repository: mysql
+    tag: "8.0"
+  nodeSelector:
+    node-role: worker
+  storage:
+    size: 2Gi
+    storageClassName: manual
+    pvName: mysql-pv
+    hostPath: /mnt/data/mysql
+
+# ---- Ingress ----
+ingress:
+  enabled: true
+  className: nginx
+  host: local.app
+
+# ---- Database migration Job (runs as a Helm hook) ----
+migration:
+  enabled: true

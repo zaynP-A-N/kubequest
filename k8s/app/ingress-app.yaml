@@ -16,3 +16,4 @@ spec:
             name: laravel-app
             port: 
               number: 80
+            

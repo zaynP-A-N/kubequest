@@ -18,3 +18,5 @@ kubectl get secret -n monitoring monitoring-grafana -o jsonpath="{.data.admin-pa
 new password:
 grafana
 
+argoCD password:
+ArgoCD123456!
