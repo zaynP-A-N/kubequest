@@ -6,42 +6,40 @@
                                     ▼
                          ┌──────────────────────┐
                          │   Ingress Controller │
-                         │      (Pod)           │
+                         │      (nginx pod)     │
                          │  on ingress-node     │
+                         │  NodePort exposed    │
                          └──────────┬───────────┘
                                     │
                                     ▼
-        ┌──────────────────────────────────────────────────┐
-        │                Kubernetes Cluster                │
-        │                                                  │
-        │   ┌──────────────────────────────┐               │
-        │   │ kube-1                       │               │
-        │   │ control-plane + worker       │               │
-        │   └──────────────┬───────────────┘               │
-        │                  │                               │
-        │   ┌──────────────▼───────────────┐               │
-        │   │ kube-2                       │               │
-        │   │ worker                       │               │
-        │   └──────────────┬───────────────┘               │
-        │                  │                               │
-        │   ┌──────────────▼───────────────┐               │
-        │   │ ingress-node                 │               │
-        │   │ (labeled: ingress=true)      │               │
-        │   │ runs ingress pod             │               │
-        │   └──────────────┬───────────────┘               │
-        │                  │                               │
-        │   ┌──────────────▼───────────────┐               │
-        │   │ monitoring-node              │               │
-        │   │ (labeled: monitoring=true)   │               │
-        │   │ runs Prometheus / Grafana    │               │
-        │   │ Loki                         │               │
-        │   └──────────────────────────────┘               │
-        │                                                  │
-        │   Workloads:                                     │
-        │   - Application Pods                             │
-        │   - Database Pods (with Persistent Volume)       │
-        │                                                  │
-        └──────────────────────────────────────────────────┘
+        ┌──────────────────────────────────────────────────────────┐
+        │                  Kubernetes Cluster                      │
+        │                                                          │
+        │   ┌──────────────────────────────────────┐               │
+        │   │ kube-1  (control-plane + worker)     │               │
+        │   │  - API server, etcd, scheduler       │               │
+        │   │  - ArgoCD (ns: argocd)               │               │
+        │   │  - Sealed Secrets ctrl (kube-system) │               │
+        │   └──────────────────┬───────────────────┘               │
+        │                      │                                   │
+        │   ┌──────────────────▼───────────────────┐               │
+        │   │ kube-2  (worker)                     │               │
+        │   │  - Laravel app pods  (ns: apphelm)   │               │
+        │   │  - MySQL pod + PV    (ns: apphelm)   │               │
+        │   └──────────────────┬───────────────────┘               │
+        │                      │                                   │
+        │   ┌──────────────────▼───────────────────┐               │
+        │   │ ingress-node                         │               │
+        │   │  - nginx ingress controller pod      │               │
+        │   └──────────────────┬───────────────────┘               │
+        │                      │                                   │
+        │   ┌──────────────────▼───────────────────┐               │
+        │   │ monitoring-node                      │               │
+        │   │  - Prometheus + Grafana (monitoring) │               │
+        │   │  - Loki (logs)                       │               │
+        │   └──────────────────────────────────────┘               │
+        │                                                          │
+        └──────────────────────────────────────────────────────────┘
 
 
 # Params of VMs
@@ -112,22 +110,41 @@ Cluster READY (4 nodes)
 Application accessible via Internet
     │
     ▼
-[Phase 7] Helm
+[Phase 7] Helm                                          
     │
-    ├─ package application
-    ├─ install via helm
+    ├─ helm/kubequest/ chart (Deployment, Service, Ingress,
+    │   ConfigMap, SealedSecrets, PV/PVC, migration Job)
+    ├─ values.yaml: image tag, replicas, ingress host,
+    │   DB name/user, storage config
+    ├─ migration Job as Helm hook (post-install/upgrade)
+    │   with initContainer waiting for MySQL
+    └─ deployed to namespace: apphelm
     │
     ▼
-[Phase 8] GitOps
+[Phase 8] GitOps                                        
     │
-    ├─ create kustomize base
-    ├─ create overlays (dev/prod)
-    ├─ optional: ArgoCD
+    ├─ ArgoCD installed (ns: argocd), exposed via NodePort
+    ├─ Application CR (argocd/application.yaml):
+    │   watches branch local-lab → path helm/kubequest/
+    │   auto-sync: prune=true, selfHeal=true
+    ├─ Sealed Secrets controller (kube-system)
+    │   laravel-secret + mysql-secret sealed → committed to git
+    │   no plaintext passwords anywhere in the repo
+    └─ GitOps loop verified: git push → ArgoCD detects →
+       applies to cluster automatically
     │
     ▼
 Automated deployment system
 
-# Tools 
+# Namespaces
+  app         - raw k8s manifests (Phase 6, kept as reference)
+  apphelm     - Helm + ArgoCD managed app (Phase 7-8)
+  argocd      - ArgoCD controllers + UI
+  monitoring  - Prometheus, Grafana, Loki
+  ingress-nginx - nginx ingress controller
+  kube-system - CoreDNS, Sealed Secrets controller
+
+# Tools
 Terraform / VM
       │
       ▼
@@ -140,39 +157,16 @@ kubeadm (create cluster)
 kubectl / Helm (deploy resources)
       │
       ▼
-Kustomize / ArgoCD (automation)
+ArgoCD + Sealed Secrets (GitOps + secret management)
 
+# Key files
+  helm/kubequest/          - Helm chart for the app
+  argocd/application.yaml  - ArgoCD Application CR
+  k8s/                     - original raw manifests (Phase 6)
+  k8s/monitoring-values.yaml, loki-values.yaml - monitoring Helm values
 
+# Optional (deferred)
+  - Resource requests/limits on all pods
+  - ResourceQuota per namespace
+  - NetworkPolicy (restrict pod-to-pod traffic)
 
-Saved to project memory, so next time you open Claude here it'll already know where you are. Now here's your
-  pickup material for next session.
-
-  📋 Copy-paste prompt for next time
-
-  ▎ I'm on the KubeQuest project (T-CLO-902-PAR_9). Phases 1–6 are done and the DB config is fixed. Today I want to do Phase 7 — Helm: package everything in k8s/app/ into a Helm chart. Then later Phase 8 — GitOps with ArgoCD + Sealed Secrets. Check the memory for context, then start Phase 7.
-
-  ---
-  Phase 7 — Helm checklist
-
-  - [ ] Create chart skeleton: helm/kubequest/ with Chart.yaml, values.yaml, templates/
-  - [ ] Templatize the existing manifests (Laravel Deployment+Service, MySQL PV/PVC/Secret/Deployment+Service,
-  ConfigMap, Ingress, migration Job)
-  - [ ] Move to values.yaml: image repo + tag, replica count, ingress host (app.local), DB name/user/password,
-  storage size
-  - [ ] Keep the DB password injectable (--set / values), not hardcoded → ready for Sealed Secrets
-  - [ ] Migration Job as a Helm hook (post-install,post-upgrade) so it runs automatically
-  - [ ] Test: helm lint, then helm upgrade --install kubequest helm/kubequest -n app --create-namespace
-  - [ ] Verify pods/ingress, then helm template to confirm output matches old manifests
-
-  Phase 8 — GitOps (ArgoCD) checklist
-
-  - [ ] Install Argo CD (kubectl create ns argocd + official manifests or Helm)
-  - [ ] Access the Argo CD UI (port-forward or an ingress) and get the initial admin password
-  - [ ] Create an Application CR pointing at this git repo → path helm/kubequest
-  - [ ] Set sync policy to automated (prune + self-heal) and confirm it syncs
-  - [ ] Install Sealed Secrets controller, kubeseal your DB secret, commit the encrypted SealedSecret, remove
-  the plaintext secret from the chart
-  - [ ] Verify: change a value in git → Argo auto-syncs the cluster
-  - [ ] (optional) Kustomize dev/prod overlays as in your architecture diagram
-
-  ---
