@@ -1,0 +1,8 @@
+apiVersion: v2
+name: kubequest-app
+description: |
+  Application Laravel + MySQL pour KubeQuest (Epitech T-CLO-902)
+  Déployable en staging et production via values overlay.
+type: application
+version: 0.1.0       # version du chart — à incrémenter à chaque modification
+appVersion: "1.0.0"  # version de l'image Docker applicative

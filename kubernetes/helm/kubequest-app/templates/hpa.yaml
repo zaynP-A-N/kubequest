@@ -1,0 +1,68 @@
+# =============================================================================
+# hpa.yaml — HorizontalPodAutoscaler + PodDisruptionBudget
+# =============================================================================
+
+{{- if .Values.app.hpa.enabled }}
+# HorizontalPodAutoscaler — Scale automatiquement le nombre de replicas
+# selon la charge CPU. Requiert le Metrics Server (installé par init-master.sh)
+#
+# Exemple de comportement :
+#   CPU < 50% → scale down (lentement, stabilizationWindow 2min)
+#   CPU > 50% → scale up  (rapidement, stabilizationWindow 30s)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: app-hpa
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: laravel
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: {{ .Chart.Name }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: app
+  minReplicas: {{ .Values.app.hpa.minReplicas }}
+  maxReplicas: {{ .Values.app.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.app.hpa.targetCPUUtilizationPercentage }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30    # attend 30s avant de scaler up
+      policies:
+        - type: Pods
+          value: 2                       # ajoute max 2 pods à la fois
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 120   # attend 2min avant de scaler down (évite le flapping)
+      policies:
+        - type: Pods
+          value: 1                       # retire max 1 pod à la fois
+          periodSeconds: 60
+{{- end }}
+---
+{{- if .Values.app.pdb.enabled }}
+# PodDisruptionBudget — Garantit la disponibilité pendant les opérations de maintenance
+# (rolling update, node drain, upgrade cluster...)
+# Sans PDB : tous les pods peuvent être arrêtés simultanément → downtime
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: app-pdb
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: laravel
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: {{ .Chart.Name }}
+spec:
+  minAvailable: {{ .Values.app.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app: laravel
+{{- end }}

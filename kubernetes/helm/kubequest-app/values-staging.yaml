@@ -1,0 +1,30 @@
+# =============================================================================
+# values-staging.yaml — Surcharge pour l'environnement staging
+#
+# Usage :
+#   helm install kubequest-staging . \
+#     -f values.yaml \
+#     -f values-staging.yaml \
+#     -f values-secrets.yaml
+# =============================================================================
+
+namespace: staging
+
+app:
+  replicas: 2
+  env:
+    appEnv: staging
+    appDebug: "true"    # debug activé en staging pour faciliter le diagnostic
+
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 60
+
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+ingress:
+  host: staging.kubequest.local

@@ -1,0 +1,7 @@
+# Secrets — ne jamais commiter
+kubernetes/helm/kubequest-app/values-secrets.yaml
+kubernetes/manifests/app/01-secrets.yaml
+
+# OS
+.DS_Store
+Thumbs.db

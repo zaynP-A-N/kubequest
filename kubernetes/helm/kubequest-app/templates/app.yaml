@@ -1,0 +1,144 @@
+# =============================================================================
+# app.yaml — Deployment + Service + Ingress de l'application Laravel
+# =============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: laravel
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+spec:
+  replicas: {{ .Values.app.replicas }}
+  selector:
+    matchLabels:
+      app: laravel
+  # RollingUpdate : remplace les pods un par un, zéro downtime
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1   # max 1 pod indisponible pendant la mise à jour
+      maxSurge: 1         # max 1 pod en plus pendant la mise à jour
+  template:
+    metadata:
+      labels:
+        app: laravel
+    spec:
+      serviceAccountName: app-sa   # ServiceAccount sans accès à l'API K8s
+      securityContext:
+        runAsNonRoot: true          # interdit de tourner en root
+        runAsUser: 33               # UID www-data (Apache)
+        runAsGroup: 33
+        fsGroup: 33
+      containers:
+        - name: app
+          image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag }}"
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - NET_BIND_SERVICE   # nécessaire pour Apache (port 80 < 1024)
+          ports:
+            - containerPort: 80
+          env:
+            - name: APP_ENV
+              value: {{ .Values.app.env.appEnv | quote }}
+            - name: APP_DEBUG
+              value: {{ .Values.app.env.appDebug | quote }}
+            - name: APP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: app-key
+            - name: DB_CONNECTION
+              value: "mysql"
+            # DB_HOST = nom du Service K8s → résolu par CoreDNS en interne
+            - name: DB_HOST
+              value: "mysql"
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: mysql-database
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: mysql-user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: mysql-password
+          # ReadinessProbe — K8s envoie du trafic seulement si l'app répond
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.app.readinessProbe.path }}
+              port: 80
+            initialDelaySeconds: {{ .Values.app.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.app.readinessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.app.readinessProbe.failureThreshold }}
+          # LivenessProbe — K8s redémarre le pod s'il ne répond plus
+          livenessProbe:
+            httpGet:
+              path: /api/counter/count
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.app.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: laravel
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: {{ .Chart.Name }}
+spec:
+  selector:
+    app: laravel
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP
+---
+{{- if .Values.ingress.enabled }}
+# Ingress — expose l'app vers l'extérieur via NGINX Ingress Controller
+# Accès : curl -H "Host: app.kubequest.local" http://<NODE_IP>:30080/api/counter/count
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: {{ .Chart.Name }}
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: app
+                port:
+                  number: 80
+{{- end }}

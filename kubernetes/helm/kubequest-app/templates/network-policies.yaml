@@ -1,0 +1,118 @@
+# =============================================================================
+# network-policies.yaml — Isolation réseau du namespace
+#
+# Principe : Zero Trust Networking
+#   1. On bloque TOUT par défaut (deny-all)
+#   2. On autorise uniquement les flux nécessaires de façon explicite
+#
+# Flux autorisés :
+#   Ingress Controller → app:80   (trafic HTTP externe)
+#   app → mysql:3306              (connexion base de données)
+#   app → CoreDNS:53              (résolution DNS interne)
+#   mysql → CoreDNS:53            (résolution DNS interne)
+# =============================================================================
+
+{{- if .Values.networkPolicies.enabled }}
+
+# Politique 1 — DENY ALL (base de toute sécurité réseau)
+# Bloque TOUT le trafic entrant et sortant dans le namespace
+# Tout flux doit ensuite être explicitement autorisé
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: {{ .Values.namespace }}
+spec:
+  podSelector: {}        # s'applique à TOUS les pods du namespace
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Politique 2 — App Laravel : accepte le trafic HTTP entrant
+# (depuis l'Ingress Controller uniquement)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: app-allow-http-ingress
+  namespace: {{ .Values.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: laravel
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 80
+---
+# Politique 3 — App Laravel : autorise le trafic sortant
+#   → vers MySQL (3306)
+#   → vers CoreDNS (53 UDP/TCP) — INDISPENSABLE pour résoudre "mysql"
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: app-allow-egress
+  namespace: {{ .Values.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: laravel
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: mysql
+      ports:
+        - protocol: TCP
+          port: 3306
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# Politique 4 — MySQL : n'accepte les connexions QUE des pods Laravel
+# Sans cette règle : n'importe quel pod du cluster pourrait accéder à MySQL
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mysql-allow-from-app-only
+  namespace: {{ .Values.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: mysql
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: laravel
+      ports:
+        - protocol: TCP
+          port: 3306
+---
+# Politique 5 — MySQL : autorise uniquement le DNS en sortie
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mysql-allow-dns-egress
+  namespace: {{ .Values.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: mysql
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+{{- end }}

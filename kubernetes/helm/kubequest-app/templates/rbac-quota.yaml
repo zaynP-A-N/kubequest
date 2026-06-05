@@ -1,0 +1,63 @@
+# =============================================================================
+# rbac-quota.yaml — RBAC, ResourceQuota, LimitRange
+# =============================================================================
+
+# ServiceAccount dédié aux pods Laravel
+# Par défaut K8s utilise le ServiceAccount "default" qui monte automatiquement
+# un token donnant accès à l'API K8s → risque de sécurité si le pod est compromis
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-sa
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: {{ .Chart.Name }}
+automountServiceAccountToken: false   # désactive le montage auto du token K8s
+                                       # Laravel n'a pas besoin de parler à l'API K8s
+---
+{{- if .Values.quota.enabled }}
+# ResourceQuota — Limite la consommation totale du namespace
+# Empêche l'app de monopoliser toutes les ressources du cluster
+# Dimensionné pour 1.6GB RAM par worker
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: app-quota
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: {{ .Chart.Name }}
+spec:
+  hard:
+    requests.cpu: "800m"
+    requests.memory: "1Gi"
+    limits.cpu: "2"
+    limits.memory: "3Gi"
+    pods: "12"
+    services: "5"
+    persistentvolumeclaims: "3"
+---
+# LimitRange — Valeurs par défaut si un pod ne déclare pas ses resources
+# Évite les pods "sans limites" qui peuvent saturer un nœud
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: app-limits
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: {{ .Chart.Name }}
+spec:
+  limits:
+    - type: Container
+      default:
+        memory: "256Mi"
+        cpu: "200m"
+      defaultRequest:
+        memory: "64Mi"
+        cpu: "50m"
+      max:
+        memory: "512Mi"
+        cpu: "500m"
+{{- end }}

@@ -1,0 +1,30 @@
+# =============================================================================
+# values-production.yaml — Surcharge pour l'environnement production
+#
+# Usage :
+#   helm install kubequest-prod . \
+#     -f values.yaml \
+#     -f values-production.yaml \
+#     -f values-secrets.yaml
+# =============================================================================
+
+namespace: app
+
+app:
+  replicas: 3
+  env:
+    appEnv: production
+    appDebug: "false"
+
+  hpa:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 50
+
+  pdb:
+    enabled: true
+    minAvailable: 2     # garantit 2 pods disponibles même pendant un rolling update
+
+ingress:
+  host: app.kubequest.local

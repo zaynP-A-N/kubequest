@@ -1,0 +1,95 @@
+# =============================================================================
+# values.yaml — Valeurs par défaut du chart kubequest-app
+#
+# Ces valeurs s'appliquent dans tous les environnements.
+# Surcharge par environnement :
+#   helm install kubequest-app . -f values-staging.yaml
+#   helm install kubequest-app . -f values-production.yaml
+# =============================================================================
+
+namespace: app
+
+# ── Application Laravel ───────────────────────────────────────────────────────
+app:
+  image:
+    repository: mistererson/kubequest-app
+    tag: latest
+    pullPolicy: Always
+
+  replicas: 1
+
+  env:
+    appEnv: production
+    appDebug: "false"
+    # APP_KEY : ne jamais mettre la vraie clé ici
+    # Générer avec : php artisan key:generate --show
+    appKey: "CHANGE_ME"
+
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "384Mi"   # adapté aux 1.6GB RAM des workers
+      cpu: "300m"
+
+  # HPA — Autoscaling horizontal
+  # Scale automatiquement le nombre de replicas selon la charge CPU
+  hpa:
+    enabled: false      # désactivé par défaut, activé en staging/prod
+    minReplicas: 1
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 60
+
+  # PDB — PodDisruptionBudget
+  # Garantit qu'au moins N pods restent disponibles pendant une opération
+  pdb:
+    enabled: false
+    minAvailable: 1
+
+  readinessProbe:
+    path: /api/counter/count
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    failureThreshold: 5
+
+# ── Base de données MySQL ─────────────────────────────────────────────────────
+mysql:
+  image:
+    repository: mysql
+    tag: "8.0"
+  replicas: 1           # toujours 1 : MySQL sans clustering
+
+  storage:
+    size: 2Gi
+    storageClassName: local-path   # provisionnement dynamique
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "200m"
+    limits:
+      memory: "512Mi"
+      cpu: "400m"
+
+  # Credentials : ne jamais mettre les vraies valeurs ici
+  # Utiliser values-secrets.yaml (gitignored) ou un Secret K8s externe
+  credentials:
+    database: kubequest_db
+    user: kubequest_user
+    password: "CHANGE_ME"
+    rootPassword: "CHANGE_ME"
+
+# ── Ingress ────────────────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: nginx
+  host: app.kubequest.local
+
+# ── NetworkPolicies ───────────────────────────────────────────────────────────
+networkPolicies:
+  enabled: true         # deny-all + règles explicites par défaut
+
+# ── ResourceQuota & LimitRange ────────────────────────────────────────────────
+quota:
+  enabled: true
