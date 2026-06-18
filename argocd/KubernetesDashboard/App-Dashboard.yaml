@@ -6,11 +6,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://charts.bitnami.com/bitnami
-    chart: kubernetes-dashboard
-    targetRevision: "*"
-    helm:
-      releaseName: kubernetes-dashboard
+    repoURL: https://github.com/kubernetes/dashboard
+    targetRevision: v3.0.0
+    path: charts/kubernetes-dashboard
   destination:
     server: https://kubernetes.default.svc
     namespace: kubernetes-dashboard
