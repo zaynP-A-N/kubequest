@@ -20,3 +20,4 @@ grafana
 
 argoCD password:
 ArgoCD123456!
+
