@@ -9,6 +9,14 @@ spec:
     repoURL: https://github.com/kubernetes/dashboard
     targetRevision: HEAD
     path: charts/kubernetes-dashboard
+    helm:
+      releaseName: kubernetes-dashboard
+      values: |
+        kong:
+          proxy:
+            type: NodePort
+            tls:
+              nodePort: 30060
   destination:
     server: https://kubernetes.default.svc
     namespace: kubernetes-dashboard

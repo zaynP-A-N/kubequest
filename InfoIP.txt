@@ -21,3 +21,6 @@ grafana
 argoCD password:
 ArgoCD123456!
 
+kubernetes dashboard:
+https://192.168.175.137:30060
+kubectl -n kubernetes-dashboard create token admin-user
