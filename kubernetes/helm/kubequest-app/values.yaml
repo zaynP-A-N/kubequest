@@ -1,0 +1,32 @@
+namespace: app
+
+app:
+  image:
+    repository: mistererson/kubequest-app
+    tag: latest
+    pullPolicy: Always
+  replicas: 2
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+mysql:
+  image:
+    repository: mysql
+    tag: "8.0"
+  storage:
+    size: 2Gi
+  credentials:
+    database: app_database
+    user: app_user
+    password: CHANGE_ME
+    rootPassword: CHANGE_ME
+
+ingress:
+  enabled: true
+  className: nginx
+  host: app.kubequest.local

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kubequest-app
+description: Helm chart pour l'application Laravel KubeQuest
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
