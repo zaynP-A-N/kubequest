@@ -28,6 +28,11 @@ spec:
               value: "production"
             - name: APP_DEBUG
               value: "false"
+            - name: APP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: app-key
             - name: DB_CONNECTION
               value: "mysql"
             - name: DB_HOST

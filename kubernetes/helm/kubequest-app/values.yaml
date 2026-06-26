@@ -2,9 +2,10 @@ namespace: app
 
 app:
   image:
-    repository: mistererson/kubequest-app
+    repository: bilaloui/kubequest-app
     tag: latest
     pullPolicy: Always
+  appKey: "base64:TaUUeD9f+lqK8MiwCoaogmnh2xaPA4xJ3d5cKWE9Dus="
   replicas: 2
   resources:
     requests:
