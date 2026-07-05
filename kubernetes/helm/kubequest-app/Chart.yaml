@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kubequest-app
+description: Application Laravel + MySQL pour KubeQuest (Epitech MSc 2026)
+type: application
+version: 0.1.0       # version du chart (incrémentée à chaque changement du chart)
+appVersion: "1.0.0"  # version de l'application (correspond au tag de l'image Docker)

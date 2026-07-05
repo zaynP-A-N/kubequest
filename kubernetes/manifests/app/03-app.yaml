@@ -1,0 +1,109 @@
+# Deployment de l'app Laravel
+# Image buildée sur node-1 ARM64, poussée sur DockerHub
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: app
+  labels:
+    app: laravel
+spec:
+  replicas: 2             # 2 réplicas = tolérance à la panne + distribution de charge
+  selector:
+    matchLabels:
+      app: laravel
+  template:
+    metadata:
+      labels:
+        app: laravel
+    spec:
+      containers:
+        - name: app
+          image: mistererson/kubequest-app:latest
+          imagePullPolicy: Always    # force le pull à chaque redémarrage du pod
+          ports:
+            - containerPort: 80
+          env:
+            # ==== App Laravel ====
+            - name: APP_ENV
+              value: "production"
+            - name: APP_DEBUG
+              value: "false"
+            - name: APP_KEY
+              value: "REDACTED_APP_KEY"
+              # → en prod, mettre l'APP_KEY dans un Secret aussi !
+
+            # ==== Connexion MySQL ====
+            # DB_HOST = nom du Service K8s MySQL → DNS interne : mysql.app.svc.cluster.local
+            - name: DB_CONNECTION
+              value: "mysql"
+            - name: DB_HOST
+              value: "mysql"
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: mysql-database
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: mysql-user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: mysql-password
+          readinessProbe:
+            httpGet:
+              path: /api/counter/count
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 5
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+---
+# Service app — expose les pods Laravel à l'intérieur du cluster
+# L'Ingress pointe sur ce Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+  namespace: app
+spec:
+  selector:
+    app: laravel
+  ports:
+    - port: 80
+      targetPort: 80
+---
+# Ingress — expose l'app vers l'extérieur via NGINX Ingress Controller
+# Accès depuis le Mac : curl -H "Host: app.kubequest.local" http://<node-IP>:30080/api/counter/count
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  namespace: app
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: app.kubequest.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: app
+                port:
+                  number: 80

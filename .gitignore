@@ -1,0 +1,18 @@
+# macOS metadata
+._*
+.DS_Store
+
+# Documentation personnelle
+documentation/
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+.terraform.lock.hcl
+
+# Sensitive
+CREDENTIALS.local
+*.local
+kubernetes/helm/kubequest-app/values-secrets.yaml

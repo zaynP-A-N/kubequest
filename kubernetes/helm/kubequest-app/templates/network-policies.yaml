@@ -1,0 +1,101 @@
+---
+# NetworkPolicy 1 — Politique par défaut : DENY ALL
+# Bloque TOUT le trafic entrant et sortant dans le namespace app
+# On autorise ensuite uniquement ce qui est nécessaire
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: app
+spec:
+  podSelector: {}        # sélectionne TOUS les pods du namespace
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# NetworkPolicy 2 — MySQL : n'accepte les connexions QUE des pods app
+# Sans cette règle + le deny-all dessus : n'importe quel pod du cluster
+# pourrait se connecter à MySQL sur le port 3306
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mysql-allow-from-app
+  namespace: app
+spec:
+  podSelector:
+    matchLabels:
+      app: mysql          # s'applique aux pods MySQL
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: laravel  # seuls les pods Laravel peuvent se connecter
+      ports:
+        - protocol: TCP
+          port: 3306
+---
+# NetworkPolicy 3 — App Laravel : accepte le trafic HTTP entrant (depuis l'Ingress)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: app-allow-ingress
+  namespace: app
+spec:
+  podSelector:
+    matchLabels:
+      app: laravel
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 80        # HTTP depuis NGINX Ingress Controller
+---
+# NetworkPolicy 4 — App Laravel : autorise le trafic SORTANT
+# (vers MySQL interne + DNS + Internet pour téléchargements éventuels)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: app-allow-egress
+  namespace: app
+spec:
+  podSelector:
+    matchLabels:
+      app: laravel
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: mysql    # vers MySQL
+      ports:
+        - protocol: TCP
+          port: 3306
+    - ports:
+        - protocol: UDP
+          port: 53          # DNS (CoreDNS) — indispensable pour résoudre "mysql"
+        - protocol: TCP
+          port: 53
+---
+# NetworkPolicy 5 — MySQL : autorise le trafic SORTANT minimal
+# (DNS uniquement pour les éventuelles résolutions de nom)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mysql-allow-egress-dns
+  namespace: app
+spec:
+  podSelector:
+    matchLabels:
+      app: mysql
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
